@@ -44,7 +44,7 @@ async def main(queue: asyncio.Queue, args: Dict[str, Any]) -> None:
 
     seen_ids: Set[int] = set()
     headers = {"Authorization": f"Bearer {token}"}
-    url = f"{controller_host}/api/v2/workflow_jobs/"
+    url = f"{controller_host}/api/controller/v2/workflow_jobs/"
 
     connector = aiohttp.TCPConnector(ssl=verify_ssl)
     async with aiohttp.ClientSession(headers=headers, connector=connector) as session:

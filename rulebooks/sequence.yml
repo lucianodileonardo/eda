@@ -17,7 +17,7 @@
 
   sources:
     - name: Polling workflow jobs del Controller
-      controller_jobs:
+      local.eda.controller_jobs:
         controller_host: "{{ controller_host }}"
         token: "{{ controller_token }}"
         watch_templates:

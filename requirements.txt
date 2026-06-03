@@ -1,0 +1,2 @@
+aiohttp>=3.9
+ansible-rulebook>=1.1.0

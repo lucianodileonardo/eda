@@ -1,0 +1,84 @@
+---
+# Rulebook di orchestrazione della sequenza disaccoppiata WF-1 -> WF-2 -> WF-3.
+# Usa il source plugin custom controller_jobs (polling API + dedup).
+#
+# Mappa di transizione:
+#   WF-1 successful -> lancia WF-2
+#   WF-2 successful -> lancia WF-3
+#   WF-3 successful -> teardown del segreto su Azure KV (chiusura felice)
+#   qualunque WF failed -> cleanup immediato del segreto + alert
+#
+# Il session_id viaggia dentro gli extra_vars di ogni workflow job e viene
+# riproposto al workflow successivo, cosi' la catena resta legata e i playbook
+# sanno quale segreto KV usare/cancellare.
+
+- name: Orchestrazione sequenza workflow via polling Controller
+  hosts: all
+
+  sources:
+    - name: Polling workflow jobs del Controller
+      ansible.eda.controller_jobs:
+        controller_host: "{{ controller_host }}"
+        token: "{{ controller_token }}"
+        watch_templates:
+          - WF-1
+          - WF-2
+          - WF-3
+        interval: 15
+        verify_ssl: true
+        statuses:
+          - successful
+          - failed
+
+  rules:
+    - name: WF-1 ok -> lancia WF-2
+      condition: >-
+        event.controller_job.name == "WF-1" and
+        event.controller_job.status == "successful"
+      action:
+        run_job_template:
+          name: WF-2
+          organization: "{{ org }}"
+          job_args:
+            extra_vars:
+              session_id: "{{ event.controller_job.session_id }}"
+
+    - name: WF-2 ok -> lancia WF-3
+      condition: >-
+        event.controller_job.name == "WF-2" and
+        event.controller_job.status == "successful"
+      action:
+        run_job_template:
+          name: WF-3
+          organization: "{{ org }}"
+          job_args:
+            extra_vars:
+              session_id: "{{ event.controller_job.session_id }}"
+
+    - name: WF-3 ok -> teardown segreto (chiusura felice)
+      condition: >-
+        event.controller_job.name == "WF-3" and
+        event.controller_job.status == "successful"
+      action:
+        run_playbook:
+          name: playbooks/teardown_secret.yml
+          extra_vars:
+            session_id: "{{ event.controller_job.session_id }}"
+            reason: success
+
+    - name: Qualunque WF fallito -> cleanup immediato del segreto
+      condition: >-
+        event.controller_job.name in ["WF-1", "WF-2", "WF-3"] and
+        event.controller_job.status == "failed"
+      action:
+        run_playbook:
+          name: playbooks/teardown_secret.yml
+          extra_vars:
+            session_id: "{{ event.controller_job.session_id }}"
+            reason: "failure-{{ event.controller_job.name }}"
+
+    - name: Errore di polling -> log diagnostico
+      condition: event.controller_poll_error is defined
+      action:
+        debug:
+          msg: "Polling Controller fallito: {{ event.controller_poll_error.error }}"

@@ -1,0 +1,8 @@
+---
+# Parametri della sequenza. In produzione token e segreti via credential AAP
+# o variabili d'ambiente, MAI in chiaro qui.
+controller_host: "{{ lookup('env', 'CONTROLLER_HOST') }}"
+controller_token: "{{ lookup('env', 'CONTROLLER_TOKEN') }}"
+org: "Default"
+kv_name: "my-keyvault"
+# session_id e incoming_secret passati a runtime dal main workflow / API.

@@ -13,7 +13,7 @@
 # sanno quale segreto KV usare/cancellare.
 
 - name: Orchestrazione sequenza workflow via polling Controller
-  hosts: all
+  hosts: localhost
 
   sources:
     - name: Polling workflow jobs del Controller

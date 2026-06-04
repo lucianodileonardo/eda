@@ -12,44 +12,21 @@
 # riproposto al workflow successivo, cosi' la catena resta legata e i playbook
 # sanno quale segreto KV usare/cancellare.
 
-- name: Orchestrazione sequenza workflow via polling Controller
-  hosts: localhost
-
+- name: Avvia WF-2 al success di WF-1
+  hosts: all
+  
   sources:
-    - name: Polling workflow jobs del Controller
-      local.eda.controller_jobs:
-        controller_host: "{{ controller_host }}"
-        token: "{{ controller_token }}"
-        watch_templates:
-          - WF-1
-          - WF-2
-        interval: 15
-        verify_ssl: true
-        statuses:
-          - successful
-          - failed
+    - name: Webhook dal Controller
+      ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
 
   rules:
-    - name: WF-1 ok -> lancia WF-2
+    - name: WF-1 completato con successo -> lancia WF-2
       condition: >-
-        event.controller_job.name == "WF-1" and
-        event.controller_job.status == "successful"
+        event.payload.name == "WF-1" and
+        event.payload.status == "successful"
       action:
         run_job_template:
           name: WF-2
-          organization: "{{ org }}"
-          job_args:
-            extra_vars:
-              session_id: "{{ event.controller_job.session_id }}"
-
-    - name: WF-2 ok -> lancia WF-3
-      condition: >-
-        event.controller_job.name == "WF-2" and
-        event.controller_job.status == "successful"
-      action:
-        run_job_template:
-          name: WF-3
-          organization: "{{ org }}"
-          job_args:
-            extra_vars:
-              session_id: "{{ event.controller_job.session_id }}"
+          organization: Default

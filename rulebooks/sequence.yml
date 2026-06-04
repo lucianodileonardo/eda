@@ -12,21 +12,30 @@
 # riproposto al workflow successivo, cosi' la catena resta legata e i playbook
 # sanno quale segreto KV usare/cancellare.
 
-- name: Avvia WF-2 al success di WF-1
+- name: Start WF-2 / WF-3 sequentially
   hosts: all
 
   sources:
-    - name: Webhook dal Controller
+    - name: Webhook from Controller
       ansible.eda.webhook:
         host: 0.0.0.0
         port: 5000
 
   rules:
-    - name: WF-1 completato con successo -> lancia WF-2
+    - name: WF-1 Succesfully completed -> launch WF-2
       condition: >-
         event.payload.name == "WF-1" and
         event.payload.status == "successful"
       action:
         run_workflow_template:
           name: WF-2
+          organization: Default
+    
+    - name: WF-2 Succesfully completed -> launch WF-3
+      condition: >-
+        event.payload.name == "WF-2" and
+        event.payload.status == "successful"
+      action:
+        run_workflow_template:
+          name: WF-3
           organization: Default

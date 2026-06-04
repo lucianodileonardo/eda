@@ -14,7 +14,7 @@
 
 - name: Avvia WF-2 al success di WF-1
   hosts: all
-  
+
   sources:
     - name: Webhook dal Controller
       ansible.eda.webhook:
@@ -27,6 +27,6 @@
         event.payload.name == "WF-1" and
         event.payload.status == "successful"
       action:
-        run_job_template:
+        run_workflow_template:
           name: WF-2
           organization: Default
